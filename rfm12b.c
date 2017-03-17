@@ -44,6 +44,7 @@ static u8 band_id         = RFM12B_DEFAULT_BAND_ID;
 static u8 bit_rate      = RFM12B_DEFAULT_BIT_RATE;
 static u8 jee_id         = RFM12B_DEFAULT_JEE_ID;
 static u8 jee_autoack   = RFM12B_DEFAULT_JEE_AUTOACK;
+static u8 channel_id   = RFM12B_DEFAULT_CHANNEL_ID;
 
 module_param(group_id, byte, 0000);
 MODULE_PARM_DESC(group_id,
@@ -65,6 +66,8 @@ MODULE_PARM_DESC(jee_autoack,
    "if the jee-protocol is enabled by setting a jee-id, enable or disable "
    "the automated sending of ACKs when a packet requests them. Can also be "
    "changed per board via ioctl().");
+module_param(channel_id, byte, 0000);
+MODULE_PARM_DESC(channel_id, "The frequency channel to use. Default 0.");
 
 #define RF_READ_STATUS     0x0000
 #define RF_IDLE_MODE       0x820D
@@ -167,7 +170,7 @@ struct rfm12_data {
 
    u8                   open, should_release, trysend;
    rfm12_state_t        state;
-   u8                   group_id, band_id, bit_rate, jee_id, jee_autoack;
+   u8                   group_id, band_id, bit_rate, jee_id, jee_autoack,channel_id;
    unsigned long        bytes_recvd, pkts_recvd;
    unsigned long        bytes_sent, pkts_sent;
    unsigned long        num_recv_overflows, num_recv_timeouts, num_recv_crc16_fail;
@@ -655,7 +658,7 @@ rfm_consume_received_byte(struct rfm12_data* rfm12, u8 recvd_byte)
       (void)rfm_finish_receiving(rfm12, 1);
       packet_finished = 1;
    }
-      
+
    return packet_finished;
 }
 
@@ -958,7 +961,7 @@ static int
 rfmXX_setup(struct rfm12_data* rfm12)
 {
    int err = 0;
-   
+rfm12->module_type=RFM12_TYPE_RF12;
    switch (rfm12->module_type) {
       case RFM12_TYPE_RF12:
          err = rfm12_setup(rfm12);
@@ -974,11 +977,11 @@ rfmXX_setup(struct rfm12_data* rfm12)
    if (0 == err) {
       printk(KERN_INFO RFM12B_DRV_NAME
           ": transceiver <0x%x> (%s) settings now: "
-          "group %d, band %d, bit rate 0x%.2x (%d bps), "
+          "channel id %d, group %d, band %d, bit rate 0x%.2x (%d bps), "
           "jee id: %d, jee autoack: %d.\n",
           (unsigned)rfm12->irq_identifier,
           rfm_string_for_module_type(rfm12->module_type),
-          rfm12->group_id, rfm12->band_id,
+          rfm12->channel_id,rfm12->group_id, rfm12->band_id,
           rfm12->bit_rate, RFM12B_BIT_RATE_FROM_BYTE(rfm12->bit_rate),
           rfm12->jee_id, rfm12->jee_autoack);
    }
@@ -1158,9 +1161,60 @@ rfm12_setup(struct rfm12_data* rfm12)
    tr.cs_change = 1;
    spi_message_add_tail(&tr, &msg);
 
-   tr2 = rfm_make_spi_transfer(rfm12, 0xA640, tx_buf+2, NULL);
+   //tr2 = rfm_make_spi_transfer(rfm12, 0xA640, tx_buf+2, NULL);
+   //tr2.cs_change = 1;
+   //spi_message_add_tail(&tr2, &msg);
+   switch(rfm12->channel_id) {
+     case(0):{
+       tr2 = rfm_make_spi_transfer(rfm12,0xAAF0, tx_buf+2, NULL);
+       break;
+     }
+     case(1):{
+       tr2 = rfm_make_spi_transfer(rfm12,0xA708, tx_buf+2, NULL);
+       break;
+     }
+     case(2):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA7D0, tx_buf+2, NULL);
+        break;
+     }
+     case(3):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA640, tx_buf+2, NULL);
+        break;
+     }
+     case(4):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA578, tx_buf+2, NULL);
+        break;
+     }
+     case(5):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA898, tx_buf+2, NULL);
+        break;
+     }
+
+     case(6):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xAA28, tx_buf+2, NULL);
+        break;
+     }
+     case(7):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xABB8, tx_buf+2, NULL);
+        break;
+     }
+     case(8):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA960, tx_buf+2, NULL);
+        break;
+     }
+     case(9):{
+        tr2 = rfm_make_spi_transfer(rfm12,0xA4B0, tx_buf+2, NULL);
+        break;
+     }
+     default:{
+       tr2 = rfm_make_spi_transfer(rfm12,0xAAF0, tx_buf+2, NULL);
+       break;
+     }
+   }
    tr2.cs_change = 1;
    spi_message_add_tail(&tr2, &msg);
+
+
 
    tr3 = rfm_make_spi_transfer(rfm12, 0xC600 | rfm12->bit_rate, tx_buf+4, NULL);
    tr3.cs_change = 1;
@@ -1197,7 +1251,7 @@ rfm12_setup(struct rfm12_data* rfm12)
    tr8.cs_change = 1;
    spi_message_add_tail(&tr8, &msg);
 
-   tr9 = rfm_make_spi_transfer(rfm12, 0x9850, tx_buf+16, NULL);
+   tr9 = rfm_make_spi_transfer(rfm12, 0x9820, tx_buf+16, NULL);
    tr9.cs_change = 1;
    spi_message_add_tail(&tr9, &msg);
 
@@ -2103,7 +2157,7 @@ static void
 rfm69_handle_interrupt(struct rfm12_data* rfm12)
 {   
    spin_lock(&rfm12->lock);
-   
+ 
    switch (rfm12->state) {
       case RFM12_STATE_LISTEN:
       case RFM12_STATE_RECV:
@@ -2167,14 +2221,13 @@ rfm_filop_read(struct file* filp, char __user *buf, size_t count, loff_t* f_pos)
       offset = 0;
      bytes_to_copy = (count > length) ? length : count;
    } else {
+
      offset = 2;
      bytes_to_copy = (count > length-2) ? length-2 : count;
    }
 
    spin_unlock_irqrestore(&rfm12->lock, flags);
-   
    bytes_to_copy -= copy_to_user(buf, rfm12->in_buf+offset, bytes_to_copy);
-
    spin_lock_irqsave(&rfm12->lock, flags);
 
    mmovelen = length + 2;
@@ -2182,7 +2235,6 @@ rfm_filop_read(struct file* filp, char __user *buf, size_t count, loff_t* f_pos)
      memmove(rfm12->in_buf,
        rfm12->in_buf + mmovelen,
        mmovelen);
-
    rfm12->in_cur_end -= length + 2;
    rfm12->in_buf_pos -= length + 2;
 
@@ -2259,8 +2311,9 @@ rfm_filop_poll(struct file* filp, poll_table* wait)
    poll_wait(filp, &rfm12->wait_read,  wait);
    poll_wait(filp, &rfm12->wait_write, wait);
    
-   if (rfm12->in_cur_end > rfm12->in_buf)
+   if (rfm12->in_cur_end > rfm12->in_buf){
       mask |= POLLIN | POLLRDNORM;
+}
    if (DATA_BUF_SIZE - (rfm12->out_cur_end - rfm12->out_buf) >= 1 + RF_EXTRA_LEN)
       mask |= POLLOUT | POLLWRNORM;
    
@@ -2430,7 +2483,16 @@ rfm_filop_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
          
          break;
       }
-      
+      case RFM12B_IOCTL_SET_CHANNEL_ID:{
+	int channel;
+        if (0 != copy_from_user(&channel, (int*)arg, sizeof(channel)))
+           return -EACCES;
+        
+         rfm12->channel_id = channel;
+         rfm_reset(rfm12);
+	 break;
+	
+      }
       default:
             return -EINVAL;
    }
@@ -2464,7 +2526,8 @@ rfm_filop_open(struct inode *inode, struct file *filp)
       rfm12->bit_rate = bit_rate;
       rfm12->jee_id = jee_id;
       rfm12->jee_autoack = jee_autoack;
-      
+      rfm12->channel_id = channel_id;
+
       if (0 == err)
           err = rfmXX_setup(rfm12);
       
@@ -2738,7 +2801,7 @@ errReturn:
    } else {
       printk(
          KERN_INFO RFM12B_DRV_NAME
-         " : driver loaded.\n"
+         " loaded on channel %d.\n",channel_id
       );
    }
 
