@@ -36,7 +36,7 @@
   Beaglebone Black  3               platform/plat_beaglebone.h
   Raspberry Pi 2    4               platform/plat_raspberrypi.h
 */
-#define RFM12B_BOARD       0 
+#define RFM12B_BOARD       4
 
 /*
   The name of the driver within the kernel (e.g. shows up in logs, etc...)
@@ -58,7 +58,9 @@
   Each RFM12B needs to have the same group ID to talk to each other.
   Change this to whatever you want, (needs to be between 0 and 255).
 */
-#define RFM12B_DEFAULT_GROUP_ID   211
+#define RFM12B_DEFAULT_GROUP_ID   212
+#define RFM12B_DEFAULT_CHANNEL_ID   0
+
 
 /*
   The default frequency band to use for each RFM12B board. You can change
@@ -72,7 +74,7 @@
      1 ... 433mhz
      2 ... 868mhz
 */
-#define RFM12B_DEFAULT_BAND_ID   2
+#define RFM12B_DEFAULT_BAND_ID   1
 
 /*
   The default bit rate to use for each RFM12B board. You can change the
@@ -86,7 +88,7 @@
   default setting is ~ 49.2kpbs, which is also what jeelib uses.
   <https://github.com/jcw/jeelib>
 */
-#define RFM12B_DEFAULT_BIT_RATE  0x06
+#define RFM12B_DEFAULT_BIT_RATE  0x23
 
 /*
   Whether Jee-compatible mode is enabled by default or not. You can
@@ -104,7 +106,7 @@
   3) The driver can automatically send Jee ACKs for packets that
      request them (see RFM12B_DEFAULT_JEE_AUTOACK).
 */
-#define RFM12B_DEFAULT_JEE_ID    0
+#define RFM12B_DEFAULT_JEE_ID    1
 
 /*
   Whether the driver should automatically send ACKs for packets that
